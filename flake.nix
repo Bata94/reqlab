@@ -15,9 +15,9 @@
           buildInputs = with pkgs; [
             just
             go
-            air
-            sqlc
-            goose
+            # air
+            # sqlc
+            # goose
           ];
           shellHook = ''
             go mod tidy

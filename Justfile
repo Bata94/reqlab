@@ -1,2 +1,2 @@
-run:
-  go run main.go
+run *PARAMS:
+  go run . {{PARAMS}}

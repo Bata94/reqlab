@@ -21,6 +21,8 @@ node_modules/
 # Go workspace file
 go.work
 tmp/
+logs/
+**/*.log
 
 # Temp/Build templ Files
 internal/templates/**/*.txt

@@ -7,8 +7,8 @@ import (
 
 var tuiCmd = &cobra.Command{
 	Use:   "tui",
-	Short: "Show the largest files in the given path.",
-	Long:  `Quickly scan a directory and find large files.`,
+	Short: "Launch the TUI",
+	Long:  "Launch the TUI, this is the main use of the App",
 	Run: func(cmd *cobra.Command, args []string) {
 		tui.MainView()
 	},

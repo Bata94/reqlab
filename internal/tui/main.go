@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -16,6 +15,9 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/bata94/reqlab/internal/tui/components"
+	// "github.com/bata94/reqlab/internal/tui/views"
 )
 
 const useHighPerformanceRenderer = false
@@ -38,86 +40,13 @@ var (
 				Render
 )
 
-func init() {
-	now := time.Now()
-	logDir := "logs/"
-	logFile := fmt.Sprint(now.Format("2006-01-02"), ".log")
-	logFilePath := fmt.Sprint(logDir, logFile)
-
-	_, err := os.Stat(logDir)
-	if _, err := os.Stat(logDir); os.IsNotExist(err) {
-		os.Mkdir(logDir, 0755)
-	}
-
-	f, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	// defer f.Close()
-
-	// log.SetFormatter(&log.JSONFormatter{})
-	log.SetOutput(f)
-	log.SetLevel(log.DebugLevel)
-}
-
 func MainView() {
-	log.Info("Starting the application...")
+	log.Info("Loading TUI ...")
 
 	p := tea.NewProgram(model{ready: false}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("There's been an error: %v", err)
 	}
-}
-
-// OpenApi Structs
-type Collection struct {
-	BasePath string
-	Host     string
-	Schemes  []string
-	Protocol string
-
-	Tags      []Tag
-	Endpoints []Endpoint
-}
-
-type Tag struct {
-	Name        string
-	Description string
-}
-
-type HTTPMethod int32
-
-const (
-	GET HTTPMethod = iota
-	POST
-	PUT
-	DELETE
-	PATCH
-	HEAD
-	OPTIONS
-	CONNECT
-	TRACE
-)
-
-var httpMethodName = map[HTTPMethod]string{
-	GET:     "get",
-	POST:    "post",
-	PUT:     "put",
-	DELETE:  "delete",
-	PATCH:   "patch",
-	HEAD:    "head",
-	OPTIONS: "options",
-	CONNECT: "connect",
-	TRACE:   "trace",
-}
-
-func (h HTTPMethod) String() string {
-	return httpMethodName[h]
-}
-
-type Endpoint struct {
-	Path   string
-	Method HTTPMethod
 }
 
 type custResp struct {
@@ -129,8 +58,8 @@ type custResp struct {
 type model struct {
 	ready            bool
 	list             list.Model
-	listKeys         *listKeyMap
-	listDelegateKeys *delegateKeyMap
+	listKeys         *components.ListKeyMap
+	listDelegateKeys *components.DelegateKeyMap
 	url              textinput.Model
 	viewport         viewport.Model
 	resp             custResp
@@ -138,53 +67,6 @@ type model struct {
 
 type respMsg custResp
 type errorMsg error
-
-type item struct {
-	title       string
-	description string
-}
-
-func (i item) Title() string       { return i.title }
-func (i item) Description() string { return i.description }
-func (i item) FilterValue() string { return i.title }
-
-type listKeyMap struct {
-	toggleSpinner    key.Binding
-	toggleTitleBar   key.Binding
-	toggleStatusBar  key.Binding
-	togglePagination key.Binding
-	toggleHelpMenu   key.Binding
-	insertItem       key.Binding
-}
-
-func newListKeyMap() *listKeyMap {
-	return &listKeyMap{
-		insertItem: key.NewBinding(
-			key.WithKeys("a"),
-			key.WithHelp("a", "add item"),
-		),
-		toggleSpinner: key.NewBinding(
-			key.WithKeys("s"),
-			key.WithHelp("s", "toggle spinner"),
-		),
-		toggleTitleBar: key.NewBinding(
-			key.WithKeys("T"),
-			key.WithHelp("T", "toggle title"),
-		),
-		toggleStatusBar: key.NewBinding(
-			key.WithKeys("S"),
-			key.WithHelp("S", "toggle status"),
-		),
-		togglePagination: key.NewBinding(
-			key.WithKeys("P"),
-			key.WithHelp("P", "toggle pagination"),
-		),
-		toggleHelpMenu: key.NewBinding(
-			key.WithKeys("H"),
-			key.WithHelp("H", "toggle help"),
-		),
-	}
-}
 
 func (m model) Init() tea.Cmd {
 	return nil
@@ -230,39 +112,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if !m.ready {
 			var (
-				delegateKeys = newDelegateKeyMap()
-				listKeys     = newListKeyMap()
+				delegateKeys = components.NewDelegateKeyMap()
+				listKeys     = components.NewListKeyMap()
 			)
 
 			// Make initial list of items
 			items := []list.Item{
-				item{
-					title:       "test 1",
-					description: "test 1 description",
+				components.Item{
+					Title:       "test 1",
+					Description: "test 1 description",
 				},
-				item{
-					title:       "test 2",
-					description: "test 2 description",
+				components.Item{
+					Title:       "test 2",
+					Description: "test 2 description",
 				},
-				item{
-					title:       "test 3",
-					description: "test 3 description",
+				components.Item{
+					Title:       "test 3",
+					Description: "test 3 description",
 				},
 			}
 
 			// Setup list
-			delegate := newItemDelegate(delegateKeys)
+			delegate := components.NewItemDelegate(delegateKeys)
 			m.list = list.New(items, delegate, msg.Width/3, msg.Height)
 			m.list.Title = "Groceries"
 			m.list.Styles.Title = titleStyle
 			m.list.AdditionalFullHelpKeys = func() []key.Binding {
 				return []key.Binding{
-					listKeys.toggleSpinner,
-					listKeys.insertItem,
-					listKeys.toggleTitleBar,
-					listKeys.toggleStatusBar,
-					listKeys.togglePagination,
-					listKeys.toggleHelpMenu,
+					listKeys.ToggleSpinner,
+					listKeys.InsertItem,
+					listKeys.ToggleTitleBar,
+					listKeys.ToggleStatusBar,
+					listKeys.TogglePagination,
+					listKeys.ToggleHelpMenu,
 				}
 			}
 			m.listKeys = listKeys
@@ -310,38 +192,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.listKeys.toggleSpinner):
+		case key.Matches(msg, m.listKeys.ToggleSpinner):
 			cmd := m.list.ToggleSpinner()
 			return m, cmd
 
-		case key.Matches(msg, m.listKeys.toggleTitleBar):
+		case key.Matches(msg, m.listKeys.ToggleTitleBar):
 			v := !m.list.ShowTitle()
 			m.list.SetShowTitle(v)
 			m.list.SetShowFilter(v)
 			m.list.SetFilteringEnabled(v)
 			return m, nil
 
-		case key.Matches(msg, m.listKeys.toggleStatusBar):
+		case key.Matches(msg, m.listKeys.ToggleStatusBar):
 			m.list.SetShowStatusBar(!m.list.ShowStatusBar())
 			return m, nil
 
-		case key.Matches(msg, m.listKeys.togglePagination):
+		case key.Matches(msg, m.listKeys.TogglePagination):
 			m.list.SetShowPagination(!m.list.ShowPagination())
 			return m, nil
 
-		case key.Matches(msg, m.listKeys.toggleHelpMenu):
+		case key.Matches(msg, m.listKeys.ToggleHelpMenu):
 			m.list.SetShowHelp(!m.list.ShowHelp())
 			return m, nil
 
-		case key.Matches(msg, m.listKeys.insertItem):
-			m.listDelegateKeys.remove.SetEnabled(true)
+		case key.Matches(msg, m.listKeys.InsertItem):
+			m.listDelegateKeys.Remove.SetEnabled(true)
 			newId := len(m.list.Items()) + 1
-			newItem := item{
-				title:       fmt.Sprintf("test %d", newId),
-				description: fmt.Sprintf("test %d description", newId),
+			newItem := components.Item{
+				Title:       fmt.Sprintf("test %d", newId),
+				Description: fmt.Sprintf("test %d description", newId),
 			}
 			insCmd := m.list.InsertItem(0, newItem)
-			statusCmd := m.list.NewStatusMessage(statusMessageStyle("Added " + newItem.Title()))
+			statusCmd := m.list.NewStatusMessage(statusMessageStyle("Added " + newItem.Title))
 			return m, tea.Batch(insCmd, statusCmd)
 		}
 		switch msg.String() {
